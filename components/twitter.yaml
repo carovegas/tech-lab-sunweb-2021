@@ -16,4 +16,4 @@ spec:
   - name: accessSecret
     value: "6ReXLX9BlzPoQsVJu9KRiqoh5mGhDhggUXKK9OfEFhQcY"
   - name: query
-    value: "cat"
+    value: "sunweb"
