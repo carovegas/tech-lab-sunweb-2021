@@ -8,7 +8,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "eastus"
+      "defaultValue": "westeurope"
     }
   },
   "functions": [],
@@ -35,7 +35,7 @@
           "parameters": {
             "location": {
               "type": "string",
-              "defaultValue": "eastus2"
+              "defaultValue": "westeurope"
             }
           },
           "functions": [],

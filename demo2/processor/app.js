@@ -13,10 +13,10 @@ app.use(bodyParser.json());
 
 // Cognitive Services API
 // The KEY 1 value from Azure Portal, Keys and Endpoint section
-const apiToken = process.env.CS_TOKEN || "";
+const apiToken = process.env.CS_TOKEN || "28fdf7f0eb4746b6b75f18751a26160b";
 
 // The Endpoint value from Azure Portal, Keys and Endpoint section
-const endpoint = process.env.CS_ENDPOINT || "";
+const endpoint = process.env.CS_ENDPOINT || "https://cssndf3mdltz62i.cognitiveservices.azure.com/";
 
 // The full URL to the sentiment service
 const apiURL = `${endpoint}text/analytics/v2.1/sentiment`;
