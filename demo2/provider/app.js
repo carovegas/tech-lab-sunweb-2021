@@ -72,6 +72,7 @@ app.post("/tweets", (req, res) => {
 
   let obj = {
     id: tweet.id_str,
+    origin: "Twitter",
     author: tweet.user.screen_name,
     author_pic: tweet.user.profile_image_url_https,
     content: tweet.full_text || tweet.text, // if extended then use it
@@ -84,6 +85,35 @@ app.post("/tweets", (req, res) => {
 
   logger.debug("obj: " + JSON.stringify(obj));
 
+  processContent(obj, res);
+});
+
+// audio handler
+app.post("/audio", (req, res) => {
+  logger.debug("/audio invoked...");
+  const audio = req.body;
+  if (!audio) {
+    res.status(400).send({ error: "invalid content" });
+    return;
+  }
+
+  let obj = {
+    id: audio.id_str,
+    origin: "Audio",
+    content: audio.full_text || audio.text, // if extended then use it
+    lang: audio.lang,
+    published: audio.created_at,
+    trace_state: req.get("tracestate"),
+    trace_parent: req.get("traceparent"),
+    sentiment: 0.5, // default to neutral sentiment
+  };
+
+  logger.debug("obj: " + JSON.stringify(obj));
+
+  processContent(obj, res);
+});
+
+var processContent = function (obj, res) {
   scoreSentiment(obj)
     .then(saveContent)
     .then(publishContent)
@@ -95,7 +125,7 @@ app.post("/tweets", (req, res) => {
       logger.error(error.message);
       res.status(500).send(error);
     });
-});
+};
 
 // score sentiment
 var scoreSentiment = function (obj) {
