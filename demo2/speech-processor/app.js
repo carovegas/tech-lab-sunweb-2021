@@ -40,11 +40,11 @@ app.get("/", (req, res) => {
 app.post("/speech-processor", async (req, res) => {
   let body = req.body;
   let lang = body.lang;
-  let text = body.text;
+  let url = body.url;
   logger.debug("speech-processor req: " + JSON.stringify(body));
 
-  if (!text || !text.trim()) {
-    res.status(400).send({ error: "text required" });
+  if (!url || !url.trim()) {
+    res.status(400).send({ error: "url required" });
     return;
   }
   
@@ -52,11 +52,10 @@ app.post("/speech-processor", async (req, res) => {
   logger.debug(`API Token: ${token}`)
 
   if (!lang || !lang.trim()) {
-    lang = "nl-NL";
+    lang = "en-UK";
   }
 
-  const fileURL = "https://techlabinputblob.blob.core.windows.net/videos/0018612910-104053.wav";
-  const responseFile = await fetch(fileURL);
+  const responseFile = await fetch(url);
   if (!responseFile.ok) {
     const error = "Error downloading file: " + responseFile.error
     logger.error(error);
@@ -72,6 +71,7 @@ app.post("/speech-processor", async (req, res) => {
 async function callCognitiveService(token, buffer, lang, res) {
   const apiRequest = `${endpoint}/speech/recognition/conversation/cognitiveservices/v1?language=${lang}&profanity=raw&diarizationEnabled=true&format=detailed`;
 
+  logger.debug("Request to: " + apiRequest);
   // Call cognitive service
   let response = await fetch(apiURL, {
     method: "POST",
