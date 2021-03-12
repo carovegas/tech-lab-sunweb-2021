@@ -29,6 +29,9 @@ const pubEndpoint = `http://localhost:${daprPort}/v1.0/publish/tweet-pubsub/scor
 // We are able to invoke the service using its appId processor
 const serviceEndpoint = `http://localhost:${daprPort}/v1.0/invoke/processor/method/sentiment-score`;
 
+// The Dapr endpoint for the influx component to store data.
+const influxEndpoint = `http://localhost:${daprPort}/v1.0/bindings/influx`;
+
 // store state
 var saveContent = function (obj) {
   return new Promise(function (resolve, reject) {
@@ -117,6 +120,7 @@ var processContent = function (obj, res) {
   scoreSentiment(obj)
     .then(saveContent)
     .then(publishContent)
+    .then(sendToInflux)
     .then(function (rez) {
       logger.debug("rez: " + JSON.stringify(rez));
       res.status(200).send({});
@@ -179,6 +183,42 @@ var publishContent = function (obj) {
         if (!_res.ok) {
           logger.debug(_res.statusText);
           reject({ message: "error publishing content" });
+        } else {
+          resolve(obj);
+        }
+      })
+      .catch((error) => {
+        logger.error(error);
+        reject({ message: error });
+      });
+  });
+};
+
+// store data to influx
+var sendToInflux = function (obj) {
+  return new Promise(function (resolve, reject) {
+    fetch(influxEndpoint, {
+      method: "POST",
+      body: JSON.stringify(
+        {
+          data: {
+            measurement: "customer-satisfaction",
+            tags: `id=${obj.id},origin=${obj.origin},author=${obj.author},lang=${obj.lang}`,
+            values: `sentiment=${obj.sentiment}`
+          },
+          "operation": "create"
+        }
+      ),
+      headers: {
+        "Content-Type": "application/json",
+        traceparent: obj.trace_parent,
+        tracestate: obj.trace_state,
+      },
+    })
+      .then((_res) => {
+        if (!_res.ok) {
+          logger.debug(_res.statusText);
+          reject({ message: "error sending data to influx" });
         } else {
           resolve(obj);
         }
