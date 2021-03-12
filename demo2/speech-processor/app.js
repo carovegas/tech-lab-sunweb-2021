@@ -2,9 +2,11 @@
 // services. When this app starts Dapr registers its name so other services
 // can use Dapr to call this service.
 require("isomorphic-fetch");
+let fs = require('fs')
 const express = require("express");
 const logger = require("./logger");
 const bodyParser = require("body-parser");
+const { response } = require("express");
 
 // express
 const port = 3003;
@@ -35,59 +37,6 @@ app.get("/", (req, res) => {
   });
 });
 
-app.post("/sentiment-score", (req, res) => {
-  let body = req.body;
-  let lang = body.lang;
-  let text = body.text;
-  logger.debug("sentiment req: " + JSON.stringify(body));
-
-  if (!text || !text.trim()) {
-    res.status(400).send({ error: "text required" });
-    return;
-  }
-
-  if (!lang || !lang.trim()) {
-    lang = "en";
-  }
-
-  const reqBody = {
-    documents: [
-      {
-        id: "1",
-        language: lang,
-        text: text,
-      },
-    ],
-  };
-
-  // Call cognitive service to score the tweet
-  fetch(apiURL, {
-    method: "POST",
-    body: JSON.stringify(reqBody),
-    headers: {
-      "Content-Type": "application/json",
-      "Ocp-Apim-Subscription-Key": apiToken,
-    },
-  })
-    .then((_res) => {
-      if (!_res.ok) {
-        res.status(400).send({ error: "error invoking cognitive service" });
-        return;
-      }
-      return _res.json();
-    })
-    .then((_resp) => {
-       // Send the response back to the other service.
-      const result = _resp.documents[0];
-      logger.debug(JSON.stringify(result));
-      res.status(200).send(result);
-    })
-    .catch((error) => {
-      logger.error(error);
-      res.status(500).send({ message: error });
-    });
-});
-
 app.post("/speech-processor", async (req, res) => {
   let body = req.body;
   let lang = body.lang;
@@ -102,61 +51,54 @@ app.post("/speech-processor", async (req, res) => {
   const token = await getToken();
   logger.debug(`API Token: ${token}`)
 
-/*  scoreSentiment(obj)
-    .then(saveContent)
-    .then(publishContent)
-    .then(function (rez) {
-      logger.debug("rez: " + JSON.stringify(rez));
-      res.status(200).send({});
-    })
-    .catch(function (error) {
-      logger.error(error.message);
-      res.status(500).send(error);
-    });*/
-  
   if (!lang || !lang.trim()) {
-    lang = "en";
+    lang = "nl-NL";
   }
 
-/*
-  const reqBody = {
-    documents: [
-      {
-        id: "1",
-        language: lang,
-        text: text,
-      },
-    ],
-  };
+  const fileURL = "https://techlabinputblob.blob.core.windows.net/videos/0018612910-104053.wav";
+  const responseFile = await fetch(fileURL);
+  if (!responseFile.ok) {
+    const error = "Error downloading file: " + responseFile.error
+    logger.error(error);
+    res.status(500).send({ message: error });
+  }
 
-  // Call cognitive service to score the tweet
-  fetch(apiURL, {
-    method: "POST",
-    body: JSON.stringify(reqBody),
-    headers: {
-      "Content-Type": "application/json",
-      "Ocp-Apim-Subscription-Key": apiToken,
-    },
-  })
-    .then((_res) => {
-      if (!_res.ok) {
-        res.status(400).send({ error: "error invoking cognitive service" });
-        return;
-      }
-      return _res.json();
-    })
-    .then((_resp) => {
-       // Send the response back to the other service.
-      const result = _resp.documents[0];
-      logger.debug(JSON.stringify(result));
-      res.status(200).send(result);
-    })
-    .catch((error) => {
-      logger.error(error);
-      res.status(500).send({ message: error });
-    });
-*/
+  const buffer = await responseFile.buffer();
+  const transcription = await callCognitiveService(token, buffer, lang, res);
+  logger.debug("Transcription: " + transcription);
+  if (transcription !== "") res.status(200).send("Everything OK!: " + transcription);
 });
+
+async function callCognitiveService(token, buffer, lang, res) {
+  const apiRequest = `${endpoint}/speech/recognition/conversation/cognitiveservices/v1?language=${lang}&profanity=raw&diarizationEnabled=true&format=detailed`;
+
+  // Call cognitive service
+  let response = await fetch(apiURL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "audio/wav;",
+      "Ocp-Apim-Subscription-Key": apiToken,
+      "Authorization": `Bearer ${token}`
+    },
+    body: buffer,
+  });
+  if (!response.ok) {
+    logger.error("error invoking cognitive service");
+    res.status(500).send({ error: "error invoking cognitive service" });
+    return "";
+  }
+
+  let responseJson = await response.json();
+  const status = responseJson.RecognitionStatus;
+  logger.debug(JSON.stringify(responseJson));
+  if (status !== "Success") {
+    logger.debug("Status failed from Cognitive: " +  status)
+    res.status(500).send({ error: "error invoking cognitive service" });
+    return "";
+  }
+
+  return responseJson.NBest[0].Display;
+}
 
 async function getToken() {
   let response = await fetch(apiTokenURL, {
