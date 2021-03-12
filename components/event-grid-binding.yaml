@@ -1,0 +1,24 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: speech-processor
+  namespace: default
+spec:
+  type: bindings.azure.eventgrid
+  metadata:
+  - name: tenantId
+    value: "7b4916b5-8728-4eea-ad9a-ddcd8e06cb1c"
+  - name: subscriptionId
+    value: "3591b539-705f-4250-8d6c-f0cc3cd8693a"
+  - name: clientId
+    value: "3e884c02-b3a8-4748-8694-1228c69dad3b"
+  - name: clientSecret
+    value: "xLlmPVuR8pEW9lG7BbkmFQq71aqSvH-Msu"
+  - name: subscriberEndpoint
+    value: "https://6f93c9bdf33d.ngrok.io/api/events"
+  - name: handshakePort
+    value: "9000"
+  - name: scope
+    value: "/subscriptions/3591b539-705f-4250-8d6c-f0cc3cd8693a/resourceGroups/tech-lab-twitterDemo2/providers/Microsoft.Storage/storageAccounts/techlabinputblob"
+  - name: eventSubscriptionName
+    scope: techlabblobsub

@@ -39,34 +39,67 @@ app.get("/", (req, res) => {
 
 app.post("/speech-processor", async (req, res) => {
   let body = req.body;
-  let lang = body.lang;
-  let url = body.url;
   logger.debug("speech-processor req: " + JSON.stringify(body));
 
-  if (!url || !url.trim()) {
-    res.status(400).send({ error: "url required" });
-    return;
-  }
-  
-  const token = await getToken();
-  logger.debug(`API Token: ${token}`)
+  if (isNewBlob(body)) {
+    let url = body.data ? body.data.url : "";
+    let lang = getLanguage(url);
+    logger.debug("speech-processor url: " + url);
+    logger.debug("speech-processor lang: " + lang);
 
-  if (!lang || !lang.trim()) {
-    lang = "en-UK";
+    if (!url || !url.trim()) {
+      res.status(400).send({ error: "url required" });
+      return;
+    }
+    
+    const token = await getToken();
+    logger.debug(`API Token: ${token}`)
+
+    if (!lang || !lang.trim()) {
+      lang = "en-UK";
+    }
+    const responseFile = await fetch(url);
+    if (!responseFile.ok) {
+      const error = "Error downloading file: " + responseFile.error
+      logger.error(error);
+      res.status(500).send({ message: error });
+    }
+
+    const buffer = await responseFile.buffer();
+    const transcription = await callCognitiveService(token, buffer, lang, res);
+    logger.debug("Transcription: " + transcription);
+    if (transcription !== "") {
+      res.status(200).send("Everything OK!: " + transcription);
+    }
+  }
+  else {
+    logger.debug("It is not new blob, speech-processor skipped");
   }
 
-  const responseFile = await fetch(url);
-  if (!responseFile.ok) {
-    const error = "Error downloading file: " + responseFile.error
-    logger.error(error);
-    res.status(500).send({ message: error });
-  }
-
-  const buffer = await responseFile.buffer();
-  const transcription = await callCognitiveService(token, buffer, lang, res);
-  logger.debug("Transcription: " + transcription);
-  if (transcription !== "") res.status(200).send("Everything OK!: " + transcription);
 });
+
+function isNewBlob(gridEvent) {
+  return gridEvent.type === "Microsoft.Storage.BlobCreated" && gridEvent.data.api === "PutBlob"
+}
+
+function getLanguage(url) {
+  var language = ""
+  var urlParts = url.split("/");
+  if (urlParts) {
+    var name = urlParts[urlParts.length - 1]
+    if (name.startsWith("uk-")) {
+      language = "en-UK"
+    }
+    if (name.startsWith("nl-")) {
+      language = "nl-NL"
+    }
+    if (name.startsWith("es-")) {
+      language = "es-ES"
+    }
+  }
+
+  return language;
+}
 
 async function callCognitiveService(token, buffer, lang, res) {
   const apiRequest = `${endpoint}/speech/recognition/conversation/cognitiveservices/v1?language=${lang}&profanity=raw&diarizationEnabled=true&format=detailed`;
