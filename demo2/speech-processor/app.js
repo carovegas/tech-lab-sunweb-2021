@@ -88,7 +88,7 @@ app.post("/sentiment-score", (req, res) => {
     });
 });
 
-app.post("/speech-processor", (req, res) => {
+app.post("/speech-processor", async (req, res) => {
   let body = req.body;
   let lang = body.lang;
   let text = body.text;
@@ -98,34 +98,9 @@ app.post("/speech-processor", (req, res) => {
     res.status(400).send({ error: "text required" });
     return;
   }
-
-  var token = "";
-  fetch(apiTokenURL, {
-    method: "POST",
-    headers: {
-      "Ocp-Apim-Subscription-Key": apiToken
-    },
-    })
-    .then((_res) => {
-      if (!_res.ok) {
-        res.status(400).send({ error: "error invoking getting token" });
-        return;
-      }
-      return _res.text()
-    })
-    .then((_token) => {
-      token = _token;
-      logger.debug(`API Token: ${token}`)
-    })
-    .catch((error) => {
-      logger.error(error);
-      res.status(500).send({ message: error });
-  });
   
-  logger.debug(`API Token1: ${token}`)
-
-  const token2 = getToken();
-  logger.debug(`API Token2: ${token2}`)
+  const token = await getToken();
+  logger.debug(`API Token: ${token}`)
 
 /*  scoreSentiment(obj)
     .then(saveContent)
