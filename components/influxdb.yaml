@@ -7,11 +7,11 @@ spec:
   type: bindings.influx
   version: v1
   metadata:
-  - name: url # Required
-    value: https://westeurope-1.azure.cloud2.influxdata.com/orgs/4ae047279b793f6b
-  - name: token # Required
+  - name: Url
+    value: https://westeurope-1.azure.cloud2.influxdata.com
+  - name: Token
     value: dV_0ZW9X-mXkxreKOT__RTNGNtF5V0IDEaI2M2ntLoIzMbW0WZ9yQ9u5m9C_tn_GruaqkNQIu15btq7bfzxGEQ==
-  - name: org # Required
-    value: 4ae047279b793f6b
-  - name: bucket # Required
-    value: fbb36c56945ef45f
+  - name: Org
+    value: roger.bramon@sundiogroup.com #4ae047279b793f6b
+  - name: Bucket
+    value: sentiment-analysis #fbb36c56945ef45f
