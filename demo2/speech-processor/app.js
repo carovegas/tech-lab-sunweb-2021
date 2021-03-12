@@ -26,6 +26,10 @@ const endpoint = process.env.CS_ENDPOINT || `https://${serviceRegion}.stt.speech
 const apiURL = `${endpoint}/speech/recognition/conversation/cognitiveservices/v1?language=nl-NL&profanity=raw&diarizationEnabled=true&format=detailed`;
 const apiTokenURL = `https://${serviceRegion}.api.cognitive.microsoft.com/sts/v1.0/issueToken`;
 
+// Dapr
+const daprPort = process.env.DAPR_HTTP_PORT || "3501";
+const providerEndpoint = `http://localhost:${daprPort}/v1.0/invoke/provider/method/audio`;
+
 // Root get that just returns the configured values.
 app.get("/", (req, res) => {
   logger.debug("speech endpoint: " + endpoint);
@@ -56,7 +60,7 @@ app.post("/speech-processor", async (req, res) => {
     logger.debug(`API Token: ${token}`)
 
     if (!lang || !lang.trim()) {
-      lang = "en-UK";
+      lang = "en-GB";
     }
     const responseFile = await fetch(url);
     if (!responseFile.ok) {
@@ -68,9 +72,28 @@ app.post("/speech-processor", async (req, res) => {
     const buffer = await responseFile.buffer();
     const transcription = await callCognitiveService(token, buffer, lang, res);
     logger.debug("Transcription: " + transcription);
-    if (transcription !== "") {
-      res.status(200).send("Everything OK!: " + transcription);
+    if (transcription === "")
+    {
+      res.status(500).send("Error, transcription is empty");
+      return;
     }
+
+    let obj = {
+      id_str: Date.now(),
+      text: transcription,
+      lang: lang,
+      created_at: new Date().toJSON(),
+      trace_state: req.get("tracestate"),
+      trace_parent: req.get("traceparent"),
+    };
+
+    if (!sendToProvider(obj))
+    {
+      res.status(500).send({ error: "error invoking provider service" });
+      return;
+    }
+    
+    res.status(200).send("Everything OK!: " + transcription);
   }
   else {
     logger.debug("It is not new blob, speech-processor skipped");
@@ -88,7 +111,7 @@ function getLanguage(url) {
   if (urlParts) {
     var name = urlParts[urlParts.length - 1]
     if (name.startsWith("uk-")) {
-      language = "en-UK"
+      language = "en-GB"
     }
     if (name.startsWith("nl-")) {
       language = "nl-NL"
@@ -100,6 +123,25 @@ function getLanguage(url) {
 
   return language;
 }
+
+async function sendToProvider(obj) {
+  let response = await fetch(providerEndpoint, {
+    method: "POST",
+    body: JSON.stringify(obj),
+    headers: {
+      "Content-Type": "application/json",
+      traceparent: obj.trace_parent,
+      tracestate: obj.trace_state,
+    },
+  });
+
+  if (!response.ok) {
+    logger.error("error invoking provider service");
+    return false;
+  }
+
+  return true;
+};
 
 async function callCognitiveService(token, buffer, lang, res) {
   const apiRequest = `${endpoint}/speech/recognition/conversation/cognitiveservices/v1?language=${lang}&profanity=raw&diarizationEnabled=true&format=detailed`;
@@ -117,7 +159,6 @@ async function callCognitiveService(token, buffer, lang, res) {
   });
   if (!response.ok) {
     logger.error("error invoking cognitive service");
-    res.status(500).send({ error: "error invoking cognitive service" });
     return "";
   }
 
@@ -126,7 +167,6 @@ async function callCognitiveService(token, buffer, lang, res) {
   logger.debug(JSON.stringify(responseJson));
   if (status !== "Success") {
     logger.debug("Status failed from Cognitive: " +  status)
-    res.status(500).send({ error: "error invoking cognitive service" });
     return "";
   }
 

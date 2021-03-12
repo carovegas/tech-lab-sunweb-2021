@@ -100,6 +100,8 @@ app.post("/audio", (req, res) => {
     return;
   }
 
+  logger.debug("Request received: " + JSON.stringify(req.body));
+
   let obj = {
     id: audio.id_str,
     origin: "Audio",
