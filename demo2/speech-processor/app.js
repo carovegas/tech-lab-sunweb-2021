@@ -23,7 +23,6 @@ const serviceRegion = process.CS_SERVICEREGION || "westeurope";
 const endpoint = process.env.CS_ENDPOINT || `https://${serviceRegion}.stt.speech.microsoft.com`;
 
 // The full URL to the speech service
-const apiURL = `${endpoint}/speech/recognition/conversation/cognitiveservices/v1?language=nl-NL&profanity=raw&diarizationEnabled=true&format=detailed`;
 const apiTokenURL = `https://${serviceRegion}.api.cognitive.microsoft.com/sts/v1.0/issueToken`;
 
 // Dapr
@@ -79,7 +78,7 @@ app.post("/speech-processor", async (req, res) => {
     }
 
     let obj = {
-      id_str: Date.now(),
+      id_str: Date.now().toString(),
       text: transcription,
       lang: lang,
       created_at: new Date().toJSON(),
@@ -148,7 +147,7 @@ async function callCognitiveService(token, buffer, lang, res) {
 
   logger.debug("Request to: " + apiRequest);
   // Call cognitive service
-  let response = await fetch(apiURL, {
+  let response = await fetch(apiRequest, {
     method: "POST",
     headers: {
       "Content-Type": "audio/wav;",
